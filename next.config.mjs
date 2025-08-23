@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // gerekirse başka ayarları buraya ekleyebilirsin
+  // başka ayarlar gerekiyorsa buraya ekleyebilirsiniz
 };
 
 export default nextConfig;
-
