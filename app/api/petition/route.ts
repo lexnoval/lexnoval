@@ -1,35 +1,63 @@
-import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+// app/api/petition/route.ts
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+export const runtime = 'nodejs'; // OpenAI için edge yerine nodejs
 
-export async function POST(req: NextRequest) {
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: Request) {
   try {
-    const { title = "Dilekçe", facts, demand } = await req.json();
+    const { title, facts, demand } = await req.json();
 
-    // 1) Taslak (uygun maliyet)
+    const prompt = `
+Türkçe resmi üslupta kısa, okunabilir bir DİLEKÇE taslağı hazırla.
+- Başlık: ${title ?? ''}
+- Olaylar (maddeler halinde): ${facts ?? ''}
+- Talep: ${demand ?? ''}
+
+Yapı:
+1) Başlık
+2) Taraflar (varsa)
+3) Olayların kısa özeti (madde madde)
+4) Hukuki değerlendirme (çok kısa)
+5) Sonuç ve Talep
+
+Sadece metin döndür.
+    `.trim();
+
+    // 1) Hızlı/ucuz taslak
     const draft = await client.responses.create({
-      model: "gpt-4o-mini",
-      input:
-        `Türkçe resmi üslupta kısa bir dilekçe taslağı yaz. ` +
-        `Başlık: ${title}. Olaylar: ${facts}. Talep: ${demand}. ` +
-        `Yapı: Başlık, Taraflar, Olaylar, Hukuki Değerlendirme, Sonuç ve Talep. ` +
-        `Sadece metin ver.`
+      model: 'gpt-4o-mini',
+      input: prompt,
     });
 
-    const draftText = draft.output_text || "";
+    const draftText =
+      draft?.output_text ||
+      (draft as any)?.choices?.[0]?.message?.content?.toString?.() ||
+      '';
 
-    // 2) Nihai düzenleme (kalite)
-    const final = await client.responses.create({
-      model: "gpt-4o",
+    // 2) Son düzenleme – daha özenli çıktı
+    const finalResp = await client.responses.create({
+      model: 'gpt-4o',
       input:
-        `Aşağıdaki taslağı Türk hukuku üslubuna uygun biçimde ` +
-        `resmileştir; yazım/dilbilgisini düzelt; başlıkları koru.\n\n` +
-        draftText
+        'Aşağıdaki taslağı Türk hukuku üslubuna uygun, temiz ve kısa bir resmi dilekçeye dönüştür. ' +
+        'Yazım/noktalama düzelt; gereksiz tekrarları çıkar.\n\nTaslak:\n' +
+        draftText,
     });
 
-    return NextResponse.json({ ok: true, text: final.output_text || draftText });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "error" }, { status: 500 });
+    const text =
+      finalResp?.output_text ||
+      (finalResp as any)?.choices?.[0]?.message?.content?.toString?.() ||
+      draftText;
+
+    return NextResponse.json({ text });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message ?? 'Unexpected error' },
+      { status: 500 }
+    );
   }
 }
