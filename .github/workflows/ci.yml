@@ -9,14 +9,26 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # Aynı ref için yeniden tetiklenirse eskisini iptal et
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    # Paralel Node sürümleri
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20.x, 22.x]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js (.nvmrc) + cache
+      - name: Use Node.js ${{ matrix.node-version }} + cache
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -31,5 +43,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-
