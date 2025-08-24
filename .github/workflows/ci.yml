@@ -6,26 +6,23 @@ on:
   pull_request:
     branches: [main]
 
+# Aynı branch’te birden fazla run olursa yenisi gelince eskisini iptal etsin
+# ve her branch kendi kuyruğuna sahip olsun.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    # Aynı ref için yeniden tetiklenirse eskisini iptal et
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-
-    # Paralel Node sürümleri
     strategy:
-      fail-fast: false
       matrix:
-        node-version: [20.x, 22.x]
-
+        node-version: [20.x, 22.x]  # paralel sürümler
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }} + cache
+      - name: Use Node ${{ matrix.node-version }} + cache
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
