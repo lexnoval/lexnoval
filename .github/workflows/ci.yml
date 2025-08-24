@@ -3,12 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']          # release tag'lerinde de çalışsın
+    paths-ignore:             # gereksiz değişikliklerde tetiklenmesin
+      - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.vscode/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.vscode/**'
+  workflow_dispatch:          # elle tetikleme
 
-# Aynı branşta yeni bir run gelirse öncekini iptal et
+# Aynı branch'te yeni run gelirse eskisini iptal et
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -18,40 +28,45 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [20.x]          # ana desteklenen sürüm
         include:
-          - node-version: 20.x
-            experimental: false
-          - node-version: 22.x
+          - node-version: 22.x        # paralel deneme
             experimental: true
 
-    # 22.x job'u deneysel: başarısız olursa workflow kırılmasın
-    continue-on-error: ${{ matrix.experimental }}
+    name: build (${{ matrix.node-version }})
+    continue-on-error: ${{ matrix.experimental == true }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node ${{ matrix.node-version }} + cache
+      - name: Use Node ${{ matrix.node-version }} + npm cache
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: package-lock.json
 
-      # engines (node:20.x) kuralını 22.x job'unda gevşet
-      - name: Install deps (stable)
-        if: ${{ !matrix.experimental }}
+      # Next.js / Turbopack cache (build'i hızlandırır)
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ matrix.node-version }}-
+
+      - name: Install deps
         run: npm ci
 
-      - name: Install deps (experimental - ignore engines)
-        if: ${{ matrix.experimental }}
-        run: npm ci --engine-strict=false
-
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run typecheck --if-present
+
+      - name: Test
+        run: npm test --if-present
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint --if-present
 
       - name: Build
         run: npm run build
