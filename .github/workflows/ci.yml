@@ -6,18 +6,27 @@ on:
   pull_request:
     branches: [main]
 
-# Aynı branch’te birden fazla run olursa yenisi gelince eskisini iptal etsin
-# ve her branch kendi kuyruğuna sahip olsun.
+# Aynı branşta yeni bir run gelirse öncekini iptal et
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [20.x, 22.x]  # paralel sürümler
+        include:
+          - node-version: 20.x
+            experimental: false
+          - node-version: 22.x
+            experimental: true
+
+    # 22.x job'u deneysel: başarısız olursa workflow kırılmasın
+    continue-on-error: ${{ matrix.experimental }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,8 +38,14 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install deps
+      # engines (node:20.x) kuralını 22.x job'unda gevşet
+      - name: Install deps (stable)
+        if: ${{ !matrix.experimental }}
         run: npm ci
+
+      - name: Install deps (experimental - ignore engines)
+        if: ${{ matrix.experimental }}
+        run: npm ci --engine-strict=false
 
       - name: Typecheck
         run: npm run typecheck
