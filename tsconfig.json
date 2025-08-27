@@ -15,6 +15,6 @@
     "incremental": true,
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "app/sentry-demo/.SentryClientDemoX.tsxtsx"],
   "exclude": ["node_modules"]
 }
