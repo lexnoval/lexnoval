@@ -25,7 +25,8 @@ export default function SentryClientDemo() {
           Hata gönder
         </button>
 
-        {sent && <p>Gönderildi! Sentry'de Issues ve Replays sekmelerine bak.</p>}
+        {sent && <p>Gönderildi! Sentry&apos;de Issues ve Replays sekmelerine bak.</p>}
+
       </div>
     </main>
   );
