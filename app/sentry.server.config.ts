@@ -1,18 +1,10 @@
-<<<<<<< HEAD
-// sentry.server.config.ts
+﻿// app/sentry.server.config.ts
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN, // server-side değişken
-  tracesSampleRate: 0.2,       // backend için %20 örnekleme
+  dsn: process.env.SENTRY_DSN || undefined,
+  tracesSampleRate: 1.0,
+  environment: process.env.VERCEL_ENV || process.env.NODE_ENV,
+  enabled: !!process.env.SENTRY_DSN && process.env.NODE_ENV !== "test",
+  debug: false,
 });
-
-=======
-import * as Sentry from "@sentry/nextjs";
-
-Sentry.init({
-  // dsn / environment sihirbazla geldiyse bırak
-  tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1"),
-  profilesSampleRate: Number(process.env.SENTRY_PROFILES_SAMPLE_RATE ?? "0.1"),
-});
->>>>>>> main
