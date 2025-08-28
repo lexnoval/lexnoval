@@ -1,25 +1,38 @@
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint",
-  "typecheck": "tsc --noEmit"
-},
-"devDependencies": {
-  "@types/node": "^20.11.30",
-  "@types/react": "^18.2.21",
-  "@types/react-dom": "^18.2.7",
-  "typescript": "5.4.5",
-  "eslint": "8.56.0",
-  "eslint-config-next": "15.0.0",
-  "tailwindcss": "^3.4.10",
-  "postcss": "^8.4.38",
-  "autoprefixer": "^10.4.19"
-},
-"engines": {
-  "node": "20.x",
-  "npm": "10.x"
+{
+  "name": "lexnoval",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "14.2.10",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@sentry/nextjs": "^8.20.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.10",
+    "tailwindcss": "^3.4.10",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.20",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.7"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "npm": ">=10"
+  },
+  "packageManager": "npm@10.8.2"
 }
+
 
 
 
