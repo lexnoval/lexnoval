@@ -1,4 +1,4 @@
-﻿// app/sentry.server.config.ts
+// app/sentry.server.config.ts
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
@@ -8,3 +8,4 @@ Sentry.init({
   enabled: !!process.env.SENTRY_DSN && process.env.NODE_ENV !== "test",
   debug: false,
 });
+

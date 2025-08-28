@@ -1,4 +1,5 @@
-﻿import * as Sentry from "@sentry/nextjs";
+// app/sentry.client.config.ts
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
@@ -7,6 +8,9 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
   integrations: [Sentry.replayIntegration()],
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NODE_ENV,
-  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV !== "test",
+  enabled:
+    !!process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV !== "test",
   debug: false,
 });
+
+
