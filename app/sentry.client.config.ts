@@ -1,30 +1,18 @@
-// sentry.client.config.ts
+// Client-side Sentry init (Next.js App Router)
 import * as Sentry from "@sentry/nextjs";
 
+const enabled = process.env.NEXT_PUBLIC_SHOW_DEMOS === "1";
+
 Sentry.init({
-<<<<<<< HEAD
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN, // Client için public DSN
-  // Performance (frontend)
-  tracesSampleRate: 0.2, // %20 örnekleme
-  // Replay
-  integrations: [Sentry.replayIntegration()],
-  replaysSessionSampleRate: 0.1,   // normal oturumların %10'u
-  replaysOnErrorSampleRate: 1.0,   // hata olursa %100
-});
-
-=======
-  // dsn / environment zaten sihirbaz eklediyse bırak
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  enabled,
+  tracesSampleRate: 1.0,
+  // Replay + Performance demoları
+  replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
   integrations: [
-    Sentry.browserTracingIntegration(), // Performance (browser)
-    Sentry.replayIntegration(),         // Session Replay
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
   ],
-
-  // Sampling oranları — prod'da düşürebiliriz
-  tracesSampleRate:
-    Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? "0.1"),
-  replaysSessionSampleRate:
-    Number(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE ?? "0.1"),
-  replaysOnErrorSampleRate:
-    Number(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE ?? "1.0"),
 });
->>>>>>> main
+
