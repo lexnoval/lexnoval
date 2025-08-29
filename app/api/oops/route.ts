@@ -1,21 +1,13 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_req: NextRequest) {
-  // Yalnızca Preview ortamında veya açıkça ENABLE_OOPS=1 ise çalıştır
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS === '1';
-
-  if (!isPreview && !enabled) {
-    // Prod’da 404 dön (endpoint görünmesin)
+  // Preview'da ENABLE_OOPS=1 ise 500 fırlat; aksi halde 404 dön (prod dahil)
+  if (process.env.ENABLE_OOPS !== '1') {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
-
   throw new Error('Test: server error from /api/oops');
 }
+
 
 
 

@@ -1,7 +1,10 @@
 name: CI
+
 on:
-  pull_request: { branches: [ main ] }
-  push: { branches: [ main ] }
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -18,24 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Debug (paths & versions)
-        run: |
-          pwd
-          ls -la
-          node -v
-          npm -v
-          test -f package.json || (echo "❌ package.json yok!" && exit 1)
-          head -n 40 package.json
-
-      # Peer çakışmaları + postinstall scriptleri CI'yi düşürmesin
       - name: Install
-        run: npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts
-        env:
-          CI: true
-          HUSKY: 0
+        run: npm ci
 
       - name: Lint
         run: npm run lint --if-present
@@ -45,8 +35,5 @@ jobs:
 
       - name: Build
         run: npm run build
-
-
-
 
 
