@@ -1,7 +1,10 @@
-export const runtime = 'nodejs';        // Node.js runtime
-export const dynamic = 'force-dynamic'; // bu endpoint'i her istekte çalıştır
+// app/api/oops/route.ts
+import * as Sentry from '@sentry/nextjs';
 
-export async function GET() {
-  // Sentry'yi test etmek için bilerek 500 fırlatıyoruz
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export const GET = Sentry.wrapRouteHandler(async () => {
   throw new Error('Test: server error from /api/oops');
-}
+});
+
