@@ -27,11 +27,12 @@
     "@types/react-dom": "^18.2.7"
   },
   "engines": {
-    "node": ">=18.17.0",
+    "node": ">=20 <21",
     "npm": ">=10"
   },
   "packageManager": "npm@10.8.2"
 }
+
 
 
 
