@@ -1,13 +1,16 @@
 // app/api/oops/route.ts
-import { wrapRouteHandlerWithSentry } from '@sentry/nextjs';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export const GET = wrapRouteHandlerWithSentry(async () => {
-  // Bilerek 500 fırlatıyoruz; Sentry bu hatayı yakalayacak
+export async function GET(_req: NextRequest) {
+  // Sentry App Router'da bu hatayı otomatik yakalar
   throw new Error('Test: server error from /api/oops');
-});
+}
+
+
+
 
 
 
