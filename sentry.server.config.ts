@@ -1,11 +1,13 @@
-// app/sentry.server.config.ts
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from '@sentry/nextjs';
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN || undefined,
-  tracesSampleRate: 1.0,
-  environment: process.env.VERCEL_ENV || process.env.NODE_ENV,
-  enabled: !!process.env.SENTRY_DSN && process.env.NODE_ENV !== "test",
-  debug: false,
+  dsn: process.env.SENTRY_DSN, // Vercel -> Production + Preview
+  environment:
+    process.env.SENTRY_ENVIRONMENT ||
+    process.env.VERCEL_ENV ||        // 'production' | 'preview' | 'development'
+    process.env.NODE_ENV,
+  tracesSampleRate: 1.0,              // APM istersen
+  debug: process.env.VERCEL_ENV === 'preview',
 });
+
 
