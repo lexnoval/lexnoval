@@ -8,3 +8,4 @@ export const GET = Sentry.wrapRouteHandler(async () => {
   throw new Error('Test: server error from /api/oops');
 });
 
+
