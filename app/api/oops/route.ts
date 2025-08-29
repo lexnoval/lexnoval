@@ -1,14 +1,16 @@
-import * as Sentry from '@sentry/nextjs';
+// app/api/oops/route.ts
+import { wrapRouteHandlerWithSentry } from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export const GET = Sentry.wrapRouteHandlerWithSentry(
+export const GET = wrapRouteHandlerWithSentry(
   async () => {
     throw new Error('Test: server error from /api/oops');
   },
-  '/api/oops' // <- ikinci argüman: route
+  '/api/oops' // App Router: route adı (gerekli)
 );
+
 
 
 
