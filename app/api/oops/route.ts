@@ -1,46 +1,19 @@
+// app/api/oops/route.ts
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 
-export async function GET(_req: Request) {
-  try {
-    // Bilerek hata fırlatıyoruz
-    throw new Error('Test: manuel hata gönderildi');
-  } catch (error) {
-    // Hata Sentry’ye gönderilsin
-    Sentry.captureException(error);
-    return NextResponse.json({ ok: false, error: 'Hata gönderildi' }, { status: 500 });
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Preview'da her zaman; prod'da sadece ENABLE_OOPS=1 ise hata fırlat
+export const GET = Sentry.wrapRouteHandlerWithSentry(async () => {
+  const isPreview = process.env.VERCEL_ENV === 'preview';
+  const enabled = process.env.ENABLE_OOPS === '1';
+
+  if (!isPreview && !enabled) {
+    // prod'da endpoint gizli kalsın
+    return NextResponse.json({ ok: false }, { status: 404 });
   }
-}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  throw new Error('Sentry demo error from /api/oops');
+});
