@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Preview'da her zaman; prod'da sadece ENABLE_OOPS=1 ise hata fırlat
-export const GET = Sentry.wrapRouteHandlerWithSentry(async () => {
+export const GET = Sentry.wrapRouteHandlerWithSentry(async (_req) => {
   const isPreview = process.env.VERCEL_ENV === 'preview';
   const enabled = process.env.ENABLE_OOPS === '1';
 
@@ -16,4 +16,4 @@ export const GET = Sentry.wrapRouteHandlerWithSentry(async () => {
   }
 
   throw new Error('Sentry demo error from /api/oops');
-});
+}, '/api/oops'); // ← 2. argüman: route adı (zorunlu senin sürümünde)
