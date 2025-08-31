@@ -6,23 +6,31 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS;
 
-  // Geçici debug: ENV ve preview algısını göster
+  // Preview algısı + manuel açma anahtarı
+  const isPreview = process.env.VERCEL_ENV === 'preview';
+  const enabled = process.env.ENABLE_OOPS === '1';
+
+  // Geçici debug: ortam değerlerini gör
   if (url.searchParams.get('debug') === '1') {
-    return NextResponse.json({ isPreview, ENABLE_OOPS: enabled ?? null }, { status: 200 });
+    return NextResponse.json({
+      isPreview,
+      ENABLE_OOPS: process.env.ENABLE_OOPS ?? null,
+    });
   }
 
-  if (!isPreview && enabled !== '1') {
+  // Prod’da gizli tut (preview değilse ve anahtar kapalıysa 404)
+  if (!isPreview && !enabled) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
   try {
+    // Bilerek hata fırlat
     throw new Error('Sentry demo error from /api/oops');
   } catch (err) {
+    // Sentry'ye gönder ve flush et ki serverless'ta kaybolmasın
+    Sentry.setTag('route', '/api/oops');
     Sentry.captureException(err);
-    return NextResponse.json({ ok: false, error: 'Hata gönderildi' }, { status: 500 });
-  }
-}
+    await Sentry.
+
 
