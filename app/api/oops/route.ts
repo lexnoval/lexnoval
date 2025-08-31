@@ -5,15 +5,18 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Preview'da her zaman; prod'da sadece ENABLE_OOPS=1 ise hata fırlat
-export const GET = Sentry.wrapRouteHandlerWithSentry(async (_req) => {
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS === '1';
+// Not: wrapRouteHandlerWithSentry TEK argüman (handler) alır.
+// Handler'ın imzası (req, ctx) olmalı. ctx'i kullanmasak da parametre olarak ekliyoruz.
+export const GET = Sentry.wrapRouteHandlerWithSentry(
+  async (_req: Request, _ctx: { params: Record<string, string | string[]> }) => {
+    const isPreview = process.env.VERCEL_ENV === 'preview';
+    const enabled = process.env.ENABLE_OOPS === '1';
 
-  if (!isPreview && !enabled) {
-    // prod'da endpoint gizli kalsın
-    return NextResponse.json({ ok: false }, { status: 404 });
+    if (!isPreview && !enabled) {
+      // prod’da endpoint gizli kalsın
+      return NextResponse.json({ ok: false }, { status: 404 });
+    }
+
+    throw new Error('Sentry demo error from /api/oops');
   }
-
-  throw new Error('Sentry demo error from /api/oops');
-}, '/api/oops'); // ← 2. argüman: route adı (zorunlu senin sürümünde)
+);
