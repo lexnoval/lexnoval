@@ -1,12 +1,17 @@
-
 name: CI
+
 on:
   pull_request: { branches: [ main ] }
   push: { branches: [ main ] }
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,19 +23,22 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Show versions
+      - name: Debug (paths & versions)
         run: |
+          pwd
+          ls -la
           node -v
           npm -v
+          test -f package.json || (echo "❌ package.json yok!" && exit 1)
+          head -n 40 package.json
 
-      # Bazı paketlerin postinstall/prepare script'leri CI'yi düşürüyorsa bunu kullan
+      # En çok takılan yerler (peer conflict / postinstall) için güvenli kurulum
       - name: Install
-        run: npm install --no-audit --no-fund --ignore-scripts
+        run: npm install --no-audit --no-fund --legacy-peer-deps --ignore-scripts
         env:
           CI: true
           HUSKY: 0
 
-      # Yerel script yoksa kırmasın diye --if-present kaldı
       - name: Lint
         run: npm run lint --if-present
 
@@ -39,6 +47,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
 
 
 
