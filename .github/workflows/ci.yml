@@ -1,3 +1,4 @@
+
 name: CI
 on:
   pull_request: { branches: [ main ] }
@@ -17,11 +18,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      - name: Show versions
+        run: |
+          node -v
+          npm -v
+
+      # Bazı paketlerin postinstall/prepare script'leri CI'yi düşürüyorsa bunu kullan
       - name: Install
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --ignore-scripts
         env:
           CI: true
+          HUSKY: 0
 
+      # Yerel script yoksa kırmasın diye --if-present kaldı
       - name: Lint
         run: npm run lint --if-present
 
