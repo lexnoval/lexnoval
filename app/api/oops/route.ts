@@ -5,21 +5,38 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request) {
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS === '1';
+// Preview'da her zaman; prod'da sadece ENABLE_OOPS=1 ise hata fırlat
+export async function GET(req: Request) {
+  const url = new URL(req.url);
 
+  const isPreview = process.env.VERCEL_ENV === 'preview';
+  const enabled  = process.env.ENABLE_OOPS === '1';
+
+  // Geçici debug: ortam değerlerini JSON gör
+  if (url.searchParams.get('debug') === '1') {
+    return NextResponse.json(
+      { isPreview, ENABLE_OOPS: enabled ? '1' : '0' },
+      { status: 200 }
+    );
+  }
+
+  // Prod'da gizli tut (preview değilse ve anahtar kapalıysa 404 dön)
   if (!isPreview && !enabled) {
-    // prod'da endpoint gizli kalsın
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
   try {
-    // Bilerek hata fırlatıyoruz; Sentry'ye de göndereceğiz
+    // Bilerek hata fırlat
     throw new Error('Sentry demo error from /api/oops');
   } catch (err) {
+    // Sentry'ye gönder ve flush et ki serverless'ta kaybolmasın
+    Sentry.setTag('route', '/api/oops'); // aramada kolaylık
     Sentry.captureException(err);
-    return NextResponse.json({ ok: false, error: 'Hata gönderildi' }, { status: 500 });
+    await Sentry.flush(2000);
+    return NextResponse.json(
+      { ok: false, error: 'Hata gönderildi' },
+      { status: 500 }
+    );
   }
 }
 
