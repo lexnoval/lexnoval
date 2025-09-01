@@ -1,9 +1,12 @@
+// instrumentation.ts
+// App Router'da server init'in garanti çalışması için bu dosya yeterli.
+import './sentry.server.config';
+
 export async function register() {
-  console.log('[instrumentation] boot:', process.env.NEXT_RUNTIME);
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./sentry.server.config');
-  }
+  // Bilerek boş. Dosyanın varlığı Sentry init'i tetikler.
 }
+
+
 
 
 
