@@ -1,42 +1,72 @@
-// app/api/oops/route.ts
-import * as Sentry from '@sentry/nextjs';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';          // Edge yerine Node.js (in-memory limiter için)
+export const dynamic = 'force-dynamic';   // Cache'e takılmasın
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS;
+// Basit in-memory rate limit (örnek): 10 sn pencerede IP başına 5 istek
+const WINDOW_MS = 10_000;
+const MAX_REQ = 5;
 
-  // İsteğe bağlı debug görünümü
-  if (url.searchParams.get('debug') === '1') {
-    return NextResponse.json(
-      { isPreview, ENABLE_OOPS: enabled ?? null },
-      { status: 200 }
-    );
+type Entry = { count: number; resetAt: number };
+const hits = new Map<string, Entry>();
+
+function rateLimit(key: string) {
+  const now = Date.now();
+  const curr = hits.get(key);
+
+  if (!curr || now > curr.resetAt) {
+    const resetAt = now + WINDOW_MS;
+    hits.set(key, { count: 1, resetAt });
+    return { allowed: true, remaining: MAX_REQ - 1, resetAt };
   }
 
-  // Prod’da gizli: sadece preview + flag açıkken 500 at
-  if (!isPreview || enabled !== '1') {
-    return NextResponse.json({ ok: false }, { status: 404 });
+  if (curr.count >= MAX_REQ) {
+    return { allowed: false, remaining: 0, resetAt: curr.resetAt };
   }
 
-  try {
-    // Bilerek hata fırlat
-    throw new Error('Sentry demo error from /api/oops');
-  } catch (err) {
-    // Sentry: etiket, yakala ve güvenli gönder
-    Sentry.setTag('route', '/api/oops');
-    Sentry.captureException(err);
-    await Sentry.flush(2000); // event’in kaybolmaması için bekle
-    return NextResponse.json(
-      { ok: false, error: 'Hata gönderildi' },
-      { status: 500 }
-    );
-  }
+  curr.count += 1;
+  return { allowed: true, remaining: MAX_REQ - curr.count, resetAt: curr.resetAt };
 }
+
+export async function GET(req: NextRequest) {
+  const ip =
+    req.headers.get('x-real-ip') ||
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    'anon';
+
+  const rl = rateLimit(ip);
+  const headers = {
+    'X-RateLimit-Limit': String(MAX_REQ),
+    'X-RateLimit-Remaining': String(rl.remaining),
+    'X-RateLimit-Reset': String(Math.ceil(rl.resetAt / 1000)),
+  };
+
+  if (!rl.allowed) {
+    return new NextResponse(JSON.stringify({ ok: false, error: 'rate_limited' }), {
+      status: 429,
+      headers,
+    });
+  }
+
+  // ?force=1 verilirse kasıtlı hata at (Sentry otomatik yakalayacak)
+  const { searchParams } = new URL(req.url);
+  if (searchParams.get('force') === '1') {
+    throw new Error('Lexnoval test error from /api/oops');
+  }
+
+  return NextResponse.json(
+    {
+      ok: true,
+      message: 'Hata testi için URL sonuna ?force=1 ekleyin. Rate-limit headerlarına bakın.',
+    },
+    { headers },
+  );
+}
+
+
+
+
+
 
 
 
