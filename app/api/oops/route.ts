@@ -1,87 +1,54 @@
 // app/api/oops/route.ts
-import type { NextRequest } from 'next/server';
+export const runtime = 'nodejs'; // in-memory rate-limit için Node
+
 import { NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import { headers } from 'next/headers';
 
-export const runtime = 'nodejs';        // Sentry flush için Node runtime
-export const dynamic = 'force-dynamic'; // Cache'e takılmasın
+// '@' alias'ınız yoksa şunu kullanın:
+// import { checkRateLimit } from '../../../lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 
-// ---- Basit in-memory rate limit (10 sn'de 5 istek) ----
-type Entry = { count: number; resetAt: number };
-const WINDOW_MS = 10_000;
-const MAX_REQ = 5;
-const hits = new Map<string, Entry>();
+const isProd = process.env.VERCEL_ENV === 'production';
 
-function ipFrom(req: NextRequest) {
-  return (
-    req.headers.get('x-real-ip') ||
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('cf-connecting-ip') ||
-    'anon'
-  );
-}
-
-function limitKey(key: string) {
-  const now = Date.now();
-  const curr = hits.get(key);
-
-  if (!curr || now > curr.resetAt) {
-    const entry: Entry = { count: 1, resetAt: now + WINDOW_MS };
-    hits.set(key, entry);
-    return { allowed: true, limit: MAX_REQ, remaining: MAX_REQ - 1, reset: entry.resetAt };
+export async function GET(request: Request) {
+  // Prod ortamında tamamen kapat
+  if (isProd) {
+    return new NextResponse('Not Found', { status: 404 });
   }
 
-  curr.count += 1;
-  hits.set(key, curr);
-  const remaining = Math.max(0, MAX_REQ - curr.count);
-  const allowed = curr.count <= MAX_REQ;
-  return { allowed, limit: MAX_REQ, remaining, reset: curr.resetAt };
-}
+  const h = headers();
+  const ip =
+    h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    h.get('x-real-ip') ||
+    '127.0.0.1';
 
-function withRLHeaders(
-  res: NextResponse,
-  info: { limit: number; remaining: number; reset: number }
-) {
-  const resetSec = Math.ceil(info.reset / 1000); // epoch seconds
-  res.headers.set('X-RateLimit-Limit', String(info.limit));
-  res.headers.set('X-RateLimit-Remaining', String(info.remaining));
-  res.headers.set('X-RateLimit-Reset', String(resetSec));
-  return res;
-}
-
-// ---- Handler ----
-export async function GET(req: NextRequest) {
-  const key = `ip:${ipFrom(req)}`;
-  const rl = limitKey(key);
-
-  if (!rl.allowed) {
-    return withRLHeaders(
-      new NextResponse(JSON.stringify({ ok: false, error: 'rate_limited' }), {
-        status: 429,
-        headers: { 'content-type': 'application/json' },
-      }),
-      rl
-    );
+  // 5 istek / 60sn basit bellek-içi limit
+  const { ok, remaining, reset } = checkRateLimit(ip, 5, 60_000);
+  if (!ok) {
+    return new NextResponse('Too Many Requests', {
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': '5',
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(reset), // epoch seconds
+      },
+    });
   }
 
-  const { searchParams } = new URL(req.url);
-
-  // Sentry hata testi: /api/oops?force=1
-  if (searchParams.get('force') === '1') {
-    const err = new Error('Lexnoval test error from /api/oops');
-    Sentry.captureException(err);
-    await Sentry.flush(2000); // event’i göndermesi için kısa beklet
-    throw err;                // 500 döner
+  // Hata zorlamak için: /api/oops?force=1
+  const force = new URL(request.url).searchParams.get('force');
+  if (force) {
+    const err = new Error('Forced error from /api/oops');
+    Sentry.captureException(err, { tags: { route: '/api/oops' } });
+    throw err; // 500 döndürür
   }
 
-  return withRLHeaders(
-    NextResponse.json({
-      ok: true,
-      message: 'Hata testi için URL sonuna ?force=1 ekleyin. Rate-limit headerlarına bakın.',
-    }),
-    rl
-  );
+  return NextResponse.json({ ok: true, remaining });
 }
+
+
+
 
 
 
