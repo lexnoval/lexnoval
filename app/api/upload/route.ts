@@ -1,56 +1,87 @@
 // app/api/upload/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
-import { z } from "zod";
-
-// Build'da bu route'u asla statikleştirme / prerender etme
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// Bu route her zaman Node.js runtime'ında ve tamamen dinamik çalışsın:
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-export const fetchCache = "force-no-store";
+export const fetchCache = 'force-no-store';
 
-const fileSchema = z.object({
-  file: z.any(), // formData() ile gelen Blob için basit doğrulama
-});
+import { NextRequest, NextResponse } from 'next/server';
+import pdfParse from 'pdf-parse';
 
+// Basit sağlık kontrolü
 export async function GET() {
-  return NextResponse.json({ ok: true, via: "GET /api/upload" });
+  return NextResponse.json({
+    ok: true,
+    via: 'GET /api/upload',
+    accepts: 'multipart/form-data',
+    usage: 'POST ile "file" alanında PDF gönderin',
+  });
 }
 
+// PDF yükleme
 export async function POST(req: NextRequest) {
   try {
+    // 1) form-data oku
     const form = await req.formData();
-    const file = form.get("file");
+    const file = form.get('file');
 
-    const info = fileSchema.safeParse({ file });
-    if (!info.success || !file) {
+    if (!file || !(file instanceof Blob)) {
       return NextResponse.json(
-        { error: "Geçersiz dosya", details: info.error?.flatten?.() },
+        { ok: false, error: 'Form-data içinde "file" alanı bulunamadı.' },
         { status: 400 }
       );
     }
 
-    // Blob -> Buffer
-    const buf = Buffer.from(await (file as Blob).arrayBuffer());
+    // (opsiyonel) tür kontrolü
+    const mime = (file as File).type || '';
+    if (!mime.includes('pdf')) {
+      return NextResponse.json(
+        { ok: false, error: `PDF bekleniyordu, gelen tür: "${mime || 'unknown'}"` },
+        { status: 415 }
+      );
+    }
 
-    // Yalnızca upload'tan gelen Buffer ile parse et
+    // 2) File -> Buffer
+    const ab = await (file as File).arrayBuffer();
+    const buf = Buffer.from(ab);
+
+    // 3) pdf-parse ile çözümle
     const parsed = await pdfParse(buf);
 
+    // 4) Sonucu döndür
     return NextResponse.json({
       ok: true,
-      text: parsed.text,
+      via: 'POST /api/upload',
+      bytes: buf.length,
       meta: {
         numpages: parsed.numpages,
-        version: parsed.version,
+        numrender: parsed.numrender,
+        info: parsed.info ?? null,
+        version: parsed.version ?? null,
       },
+      // Çok uzun olmasın diye metnin sadece başını döndürüyoruz
+      textPreview: parsed.text?.slice(0, 1000) ?? '',
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message ?? "unknown error" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
