@@ -1,40 +1,57 @@
-import * as Sentry from '@sentry/nextjs';
-import { NextResponse } from 'next/server';
-
+// app/api/oops/route.ts
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const isPreview = process.env.VERCEL_ENV === 'preview';
-  const enabled = process.env.ENABLE_OOPS;
+import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
+import { headers } from 'next/headers';
 
-  // Preview algısını doğrulamak için basit ping
-  if (url.searchParams.get('debug') === '1') {
-    return NextResponse.json(
-      { isPreview, ENABLE_OOPS: enabled ?? null },
-      { status: 200 },
-    );
+// ÖNEMLİ: Alias yerine relative path (dosya kökü: /lib/rate-limit.ts)
+import { checkRateLimit } from '../../../lib/rate-limit';
+
+export async function GET(request: Request) {
+  const h = headers();
+  const ip =
+    h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    h.get('x-real-ip') ||
+    '127.0.0.1';
+
+  // 5 istek / 60sn basit bellek-içi limit
+  const { ok, remaining, reset } = checkRateLimit(ip, 5, 60_000);
+  if (!ok) {
+    return new NextResponse('Too Many Requests', {
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': '5',
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(reset),
+      },
+    });
   }
 
-  // Prod/preview değilse ve anahtar kapalıysa endpoint'i gizle
-  if (!isPreview && enabled !== '1') {
-    return NextResponse.json({ ok: false }, { status: 404 });
+  const force = new URL(request.url).searchParams.get('force');
+  if (force) {
+    const err = new Error('Forced error from /api/oops');
+    Sentry.captureException(err, { tags: { route: '/api/oops' } });
+    throw err; // 500 üretir
   }
 
-  try {
-    // Bilerek hata fırlat
-    throw new Error('Sentry demo error from /api/oops');
-  } catch (err) {
-    // Sentry'ye gönder ve serverless'ta kaybolmasın diye flush et
-    Sentry.setTag('route', '/api/oops');
-    Sentry.captureException(err);
-    await Sentry.flush(2000);
-
-    return NextResponse.json(
-      { ok: false, error: 'Hata gönderildi' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({ ok: true, remaining });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
