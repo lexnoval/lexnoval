@@ -1,21 +1,19 @@
+// app/api/upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import pdfParse from "pdf-parse";
 import { z } from "zod";
 
-// Build & cache davranışı
+// Build'da bu route'u asla statikleştirme / prerender etme
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const revalidate = 0 as const;
+export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 const fileSchema = z.object({
-  name: z.string().min(1),
-  type: z.string().min(1),
-  size: z.number().positive()
+  file: z.any(), // formData() ile gelen Blob için basit doğrulama
 });
 
 export async function GET() {
-  // basit sağlık kontrolü
   return NextResponse.json({ ok: true, via: "GET /api/upload" });
 }
 
@@ -24,34 +22,27 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
     const file = form.get("file");
 
-    // FormData doğrulaması
-    if (!(file instanceof Blob)) {
+    const info = fileSchema.safeParse({ file });
+    if (!info.success || !file) {
       return NextResponse.json(
-        { error: "file bekleniyor (multipart/form-data)" },
+        { error: "Geçersiz dosya", details: info.error?.flatten?.() },
         { status: 400 }
       );
     }
 
-    const meta = fileSchema.safeParse({
-      name: (file as any).name ?? "unnamed",
-      type: file.type,
-      size: file.size
-    });
-    if (!meta.success) {
-      return NextResponse.json(
-        { error: "Geçersiz dosya", details: meta.error.flatten() },
-        { status: 400 }
-      );
-    }
+    // Blob -> Buffer
+    const buf = Buffer.from(await (file as Blob).arrayBuffer());
 
-    // Yalnızca gelen dosyadan oku — yerel dosya YOK
-    const buf = Buffer.from(await file.arrayBuffer());
+    // Yalnızca upload'tan gelen Buffer ile parse et
     const parsed = await pdfParse(buf);
 
     return NextResponse.json({
       ok: true,
-      via: "POST /api/upload",
-      text: parsed.text
+      text: parsed.text,
+      meta: {
+        numpages: parsed.numpages,
+        version: parsed.version,
+      },
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -60,6 +51,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 
 
